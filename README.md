@@ -1,3 +1,11 @@
+# Project Details
+
+This application can detect and categorize 6 diseases — Malaria using cell images, Brain Tumor detection using MRI scans, Pneumonia using chest X-ray images, Retinal diseases using Optical Coherence Tomography images, Nonproliferative Diabetes Retinopathy disease and Invasive Ductal Carcinoma using breast cancer histopathology images. All the models are trained on the publicly available datasets from Kaggle.
+
+Huge thanks to [Saugata Paul](https://github.com/saugatapaul1010/Medical-AI-Android) for his wonderful repo.
+
+
+
 # Future Improvements
 
 
