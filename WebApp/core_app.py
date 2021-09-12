@@ -36,44 +36,8 @@ def resize_image_pnm(image):
         resized_image = cv2.cvtColor(resized_image,cv2.COLOR_GRAY2RGB) #Convert to RGB
     return resized_image
 
-from tensorflow.keras.models import load_model
-import cv2 as cv
-import imutils
-
-model_brain = load_model('static/weights/brain_tumor_detector.h5')
-
 #Download VGG16 Weights.
 #wget https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels.h5
-def predictTumor(image):
-    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    gray = cv.GaussianBlur(gray, (5, 5), 0)
-
-    # Threshold the image, then perform a series of erosions +
-    # dilations to remove any small regions of noise
-    thresh = cv.threshold(gray, 45, 255, cv.THRESH_BINARY)[1]
-    thresh = cv.erode(thresh, None, iterations=2)
-    thresh = cv.dilate(thresh, None, iterations=2)
-
-    # Find contours in thresholded image, then grab the largest one
-    cnts = cv.findContours(thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
-    c = max(cnts, key=cv.contourArea)
-
-    # Find the extreme points
-    extLeft = tuple(c[c[:, :, 0].argmin()][0])
-    extRight = tuple(c[c[:, :, 0].argmax()][0])
-    extTop = tuple(c[c[:, :, 1].argmin()][0])
-    extBot = tuple(c[c[:, :, 1].argmax()][0])
-
-    # crop new image out of the original image using the four extreme points (left, right, top, bottom)
-    new_image = image[extTop[1]:extBot[1], extLeft[0]:extRight[0]]
-
-    image = cv.resize(new_image, dsize=(240, 240), interpolation=cv.INTER_CUBIC)
-    image = image / 255.
-
-    image = image.reshape((1, 240, 240, 3))
-
-    return model_brain .predict(image)
 
 def load_vgg16_model():
   input_shape = (224, 224, 3)
@@ -155,134 +119,136 @@ def index_from_checkup():
 def checkup_from_any():
     return render_template('checkup.html')
 
+@app.route('/blog.html')
+def blog():
+    return render_template('blog.html')
+
 @app.route('/about.html')
 def about():
     return render_template('about.html')
 
 @app.route("/", methods = ["POST", "GET"])
-def index():  # sourcery no-metrics
-    if request.method != "POST":
-        return jsonify({"empty":True})
+def index():
+  if request.method == "POST":
     type_ = request.form.get("type", None)
     data = None
     final_json = []
     if 'img' in request.files:
-        file_ = request.files['img']
-        name = os.path.join(tempfile.gettempdir(), str(uuid.uuid4().hex[:10]))
-        file_.save(name)
-        print("[DEBUG: %s]"%dt.now(),name)
+      file_ = request.files['img']
+      name = os.path.join(tempfile.gettempdir(), str(uuid.uuid4().hex[:10]))
+      file_.save(name)
+      print("[DEBUG: %s]"%dt.now(),name)
 
-        if (type_=="mal"):
-            test_image = image.load_img(name, target_size = (128, 128))
-            test_image = image.img_to_array(test_image)
-            test_image = test_image/255
-            test_image = np.expand_dims(test_image, axis = 0)
-            data=test_image
-        elif(type_=="brain"):
-          data = cv2.imread(name)
+      if(type_=="mal" or type_=='brain'):
+        test_image = image.load_img(name, target_size = (128, 128))
+        test_image = image.img_to_array(test_image)
+        test_image = test_image/255
+        test_image = np.expand_dims(test_image, axis = 0)
+        data=test_image
 
-        elif(type_=='oct'):
-          test_image = imageio.imread(name)                  #Read image using the PIL library
-          test_image = resize_image_oct(test_image)          #Resize the images to 128x128 pixels
-          test_image = np.array(test_image)                  #Convert the image to numpy array
-          test_image = test_image/255                        #Scale the pixels between 0 and 1
-          test_image = np.expand_dims(test_image, axis=0)    #Add another dimension because the model was trained on (n,128,128,3)
-          data = test_image
+      elif(type_=='oct'):
+        test_image = imageio.imread(name)                  #Read image using the PIL library
+        test_image = resize_image_oct(test_image)          #Resize the images to 128x128 pixels
+        test_image = np.array(test_image)                  #Convert the image to numpy array
+        test_image = test_image/255                        #Scale the pixels between 0 and 1
+        test_image = np.expand_dims(test_image, axis=0)    #Add another dimension because the model was trained on (n,128,128,3)
+        data = test_image
 
-        elif type_ in ['pnm', 'dia_ret']:
-            test_image = Image.open(name)                                  #Read image using the PIL library
-            test_image = test_image.resize((128,128), Image.ANTIALIAS)     #Resize the images to 128x128 pixels
-            test_image = np.array(test_image)                              #Convert the image to numpy array
-            test_image = test_image/255                                    #Scale the pixels between 0 and 1
-            test_image = np.expand_dims(test_image, axis=0)                #Add another dimension because the model was trained on (n,128,128,3)
-            data = test_image
+      elif(type_=='pnm' or type_=='dia_ret'):
+        test_image = Image.open(name)                                  #Read image using the PIL library
+        test_image = test_image.resize((128,128), Image.ANTIALIAS)     #Resize the images to 128x128 pixels
+        test_image = np.array(test_image)                              #Convert the image to numpy array
+        test_image = test_image/255                                    #Scale the pixels between 0 and 1
+        test_image = np.expand_dims(test_image, axis=0)                #Add another dimension because the model was trained on (n,128,128,3)
+        data = test_image
 
-        elif(type_=='breast'):
-          test_image = Image.open(name)                                  #Read image using the PIL library
-          test_image = test_image.resize((50,50), Image.ANTIALIAS)     #Resize the images to 128x128 pixels
-          test_image = np.array(test_image)                              #Convert the image to numpy array
-          test_image = test_image/255                                    #Scale the pixels between 0 and 1
-          test_image = np.expand_dims(test_image, axis=0)                #Add another dimension because the model was trained on (n,128,128,3)
-          data = test_image
-
-        elif(type_=='fun'):
-          test_image = load_img(name, target_size=(224, 224))                          #Read image using the PIL library, Resize the images to 128x128 pixels
-          test_image = img_to_array(test_image)                                        #Conver the PIL image to numpy array
-          test_image = np.expand_dims(test_image, axis=0)                              #expand_dims will add an extra dimension to the data at a particular axis
-          test_image = vgg16.preprocess_input(test_image)                              #Prepare the image for the VGG model
-          data = test_image
+      elif(type_=='breast'):
+        test_image = Image.open(name)                                  #Read image using the PIL library
+        test_image = test_image.resize((50,50), Image.ANTIALIAS)     #Resize the images to 128x128 pixels
+        test_image = np.array(test_image)                              #Convert the image to numpy array
+        test_image = test_image/255                                    #Scale the pixels between 0 and 1
+        test_image = np.expand_dims(test_image, axis=0)                #Add another dimension because the model was trained on (n,128,128,3)
+        data = test_image
+      
+      elif(type_=='fun'):
+        test_image = load_img(name, target_size=(224, 224))                          #Read image using the PIL library, Resize the images to 128x128 pixels
+        test_image = img_to_array(test_image)                                        #Conver the PIL image to numpy array
+        test_image = np.expand_dims(test_image, axis=0)                              #expand_dims will add an extra dimension to the data at a particular axis
+        test_image = vgg16.preprocess_input(test_image)                              #Prepare the image for the VGG model
+        data = test_image
 
 
-        model=get_model(type_)[0]
+      model=get_model(type_)[0]
 
-        if(type_=='mal'):
-           preds, pred_val = translate_malaria(model["model"].predict(data))
-           final_json.append({"empty": False, "type":model["type"], 
-                              "para":preds[0], 
-                              "unin":preds[1],
-                              "pred_val": pred_val})
-        elif(type_=='brain'):
-           x=predictTumor(data)[0][0]
-           preds, pred_val = translate_brain(x)
-           final_json.append({"empty": False, "type":model["type"], 
-                              "tumor":preds[0], 
-                              "normal":preds[1],
-                              "pred_val": pred_val})
-        elif(type_=='breast'):
-           preds, pred_val = translate_cancer(model["model"].predict(data))
-           final_json.append({"empty": False, 
-                              "type":model["type"], 
-                              "can":preds[0], 
-                              "norm":preds[1],
-                              "pred_val": pred_val})
-        elif(type_=='pnm'):
-           preds, pred_val = translate_pnm(model["model"].predict(data))
-           final_json.append({"empty": False, "type":model["type"], 
-                              "bac":preds[0], 
-                              "normal":preds[1],
-                              "viral":preds[2],
-                              "pred_val": pred_val})
-        elif(type_=='oct'):
-           preds, pred_val = translate_oct(model["model"].predict(data))
-           final_json.append({"empty": False, "type":model["type"], 
-                              "cnv":preds[0], 
-                              "dme":preds[1],
-                              "drusen":preds[2],
-                              "normal":preds[3],
-                              "pred_val": pred_val})
-        elif(type_=='dia_ret'):
-           preds, pred_val = translate_retinopathy(model["model"].predict(data))
-           final_json.append({"empty": False, "type":model["type"], 
-                              "mild":preds[0], 
-                              "mod":preds[1],
-                              "norm":preds[2],
-                              "severe":preds[3],
-                              "pred_val": pred_val})
-        elif(type_=='fun'):
-           preds, pred_val = translate_vgg_16(model["model"].predict(data))
-           final_json.append({"empty": False, 
-                              "type":model["type"], 
-                              "top1":preds[0], 
-                              "top2":preds[1],
-                              "top3":preds[2],
-                              "top4":preds[3],
-                              "top5":preds[4],
-                              "pred_val": pred_val})
+      if(type_=='mal'):
+         preds, pred_val = translate_malaria(model["model"].predict_proba(data))
+         final_json.append({"empty": False, "type":model["type"], 
+                            "para":preds[0], 
+                            "unin":preds[1],
+                            "pred_val": pred_val})
+      elif(type_=='brain'):
+         preds, pred_val = translate_brain(model["model"].predict_proba(data))
+         final_json.append({"empty": False, "type":model["type"], 
+                            "tumor":preds[0], 
+                            "normal":preds[1],
+                            "pred_val": pred_val})
+      elif(type_=='breast'):
+         preds, pred_val = translate_cancer(model["model"].predict_proba(data))
+         final_json.append({"empty": False, 
+                            "type":model["type"], 
+                            "can":preds[0], 
+                            "norm":preds[1],
+                            "pred_val": pred_val})
+      elif(type_=='pnm'):
+         preds, pred_val = translate_pnm(model["model"].predict_proba(data))
+         final_json.append({"empty": False, "type":model["type"], 
+                            "bac":preds[0], 
+                            "normal":preds[1],
+                            "viral":preds[2],
+                            "pred_val": pred_val})
+      elif(type_=='oct'):
+         preds, pred_val = translate_oct(model["model"].predict(data))
+         final_json.append({"empty": False, "type":model["type"], 
+                            "cnv":preds[0], 
+                            "dme":preds[1],
+                            "drusen":preds[2],
+                            "normal":preds[3],
+                            "pred_val": pred_val})
+      elif(type_=='dia_ret'):
+         preds, pred_val = translate_retinopathy(model["model"].predict_proba(data))
+         final_json.append({"empty": False, "type":model["type"], 
+                            "mild":preds[0], 
+                            "mod":preds[1],
+                            "norm":preds[2],
+                            "severe":preds[3],
+                            "pred_val": pred_val})
+      elif(type_=='fun'):
+         preds, pred_val = translate_vgg_16(model["model"].predict(data))
+         final_json.append({"empty": False, 
+                            "type":model["type"], 
+                            "top1":preds[0], 
+                            "top2":preds[1],
+                            "top3":preds[2],
+                            "top4":preds[3],
+                            "top5":preds[4],
+                            "pred_val": pred_val})
     else:
-        warn = "Feeding blank image won't work. Please enter an input image to continue."
-        pred_val =" "
-        final_json.append({"pred_val": warn,"para": " ","unin": " ","tumor": " ", "can":" ",
-                           "normal": " ","bac": " ","viral": " ","cnv": " ","dme": " ",
-                           "drusen": " ","mild": " ","mod": " ","severe": " ","norm": " ",
-                           "top1": " ","top2": " ","top3": " ","top4": " ","top5": " "}) 
+      warn = "Feeding blank image won't work. Please enter an input image to continue."
+      pred_val =" "
+      final_json.append({"pred_val": warn,"para": " ","unin": " ","tumor": " ", "can":" ",
+                         "normal": " ","bac": " ","viral": " ","cnv": " ","dme": " ",
+                         "drusen": " ","mild": " ","mod": " ","severe": " ","norm": " ",
+                         "top1": " ","top2": " ","top3": " ","top4": " ","top5": " "}) 
 
     K.clear_session()
     return jsonify(final_json)
+  return jsonify({"empty":True})
 
 """This function is used to load the model from disk."""
 def load_model_(model_name):
-    model_name = os.path.join("static/weights",model_name)
-    return load_model(model_name)
+  model_name = os.path.join("static/weights",model_name)
+  model = load_model(model_name)
+  return model
 
 """This function is used to load the specific model for specific request calls. This
 function will return a list of dictionary items, where the key will contain the loaded
@@ -292,7 +258,7 @@ def get_model(name = None):
   if(name=='mal'):
     model_name.append({"model": load_model_("malaria.h5"), "type": name})
   elif(name=='brain'):
-    model_name.append({"model":  model_brain, "type": name})
+    model_name.append({"model": load_model_("brain_tumor.h5"), "type": name})
   elif(name=='pnm'):
     model_name.append({"model": load_model_("pneumonia.h5"), "type": name})
   elif(name=='oct'):
@@ -310,56 +276,56 @@ store them in individual variables. We will return the class probabilities and t
 made by the model to the frontend. The value contained in variables total and prediction will be
 displayed in the frontend HTML layout."""
 def translate_malaria(preds):
-    y_proba_Class0 = preds.flatten().tolist()[0] * 100
-    y_proba_Class1 = 100.0-y_proba_Class0
+  y_proba_Class0 = preds.flatten().tolist()[0] * 100
+  y_proba_Class1 = 100.0-y_proba_Class0
 
-    para_prob="Probability of the cell image to be Parasitized: {:.2f}%".format(y_proba_Class1)
-    unifected_prob="Probability of the cell image to be Uninfected: {:.2f}%".format(y_proba_Class0)
+  para_prob="Probability of the cell image to be Parasitized: {:.2f}%".format(y_proba_Class1)
+  unifected_prob="Probability of the cell image to be Uninfected: {:.2f}%".format(y_proba_Class0)
 
-    total = para_prob + " " + unifected_prob
-    total = [para_prob,unifected_prob]
+  total = para_prob + " " + unifected_prob
+  total = [para_prob,unifected_prob]
 
-    if (y_proba_Class1 > y_proba_Class0):
-        prediction="Inference: The cell image shows strong evidence of Malaria."
-    else:
-        prediction="Inference: The cell image shows no evidence of Malaria."
-
-    return total,prediction
+  if (y_proba_Class1 > y_proba_Class0):
+      prediction="Inference: The cell image shows strong evidence of Malaria."
+      return total,prediction
+  else:
+      prediction="Inference: The cell image shows no evidence of Malaria."
+      return total,prediction
 
 """This function also does the same thing as above. Since it's a two class classification problem, 
 we can subtract one probability percentage values from 100 to get the other value."""
 def translate_cancer(preds):
-    y_proba_Class0 = preds.flatten().tolist()[0] * 100
-    y_proba_Class1 = 100.0-y_proba_Class0
+  y_proba_Class0 = preds.flatten().tolist()[0] * 100
+  y_proba_Class1 = 100.0-y_proba_Class0
 
-    can="Probability of the histopathology image to have cancer: {:.2f}%".format(y_proba_Class1)
-    norm="Probability of the histopathology image to be normal: {:.2f}%".format(y_proba_Class0)
+  can="Probability of the histopathology image to have cancer: {:.2f}%".format(y_proba_Class1)
+  norm="Probability of the histopathology image to be normal: {:.2f}%".format(y_proba_Class0)
 
-    total = [can,norm]
+  total = [can,norm]
 
-    if (y_proba_Class1 > y_proba_Class0):
-        prediction="Inference: The histopathology image shows strong evidence of Invasive Ductal Carcinoma."
-    else:
-        prediction="Inference: The cell image shows no evidence of Invasive Ductal Carcinoma."
-
-    return total,prediction
+  if (y_proba_Class1 > y_proba_Class0):
+      prediction="Inference: The histopathology image shows strong evidence of Invasive Ductal Carcinoma."
+      return total,prediction
+  else:
+      prediction="Inference: The cell image shows no evidence of Invasive Ductal Carcinoma."
+      return total,prediction
 
 """Tis function will compute the values for the brain cancer model"""
-def translate_brain(x):
-    y_proba_Class0 = (1-x)* 100
-    y_proba_Class1 = 100.0-y_proba_Class0
+def translate_brain(preds):
+  y_proba_Class0 = preds.flatten().tolist()[0] * 100
+  y_proba_Class1 = 100.0-y_proba_Class0
 
-    tumor="Probability of the MRI scan to have a brain tumor: {:.2f}%".format(y_proba_Class1)
-    normal="Probability of the MRI scan to not have a brain tumor: {:.2f}%".format(y_proba_Class0)
+  tumor="Probability of the MRI scan to have a brain tumor: {:.2f}%".format(y_proba_Class1)
+  normal="Probability of the MRI scan to not have a brain tumor: {:.2f}%".format(y_proba_Class0)
 
-    total = [tumor, normal]
+  total = [tumor, normal]
 
-    if (y_proba_Class1 > y_proba_Class0):
-        prediction="Inference: The MRI scan has a brain tumor."
-    else:
-        prediction="Inference: The MRI scan does not show evidence of any brain tumor."
-
-    return total,prediction
+  if (y_proba_Class1 > y_proba_Class0):
+      prediction="Inference: The MRI scan has a brain tumor."
+      return total,prediction
+  else:
+      prediction="Inference: The MRI scan does not show evidence of any brain tumor."
+      return total,prediction
 
 """For multi class problems, we will obtain each of the class probabilities for each of the 
 classes. We will send this values to frontend using a jsonfy object. The final jsonfy object will
