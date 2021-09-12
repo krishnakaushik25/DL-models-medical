@@ -21,10 +21,15 @@ Huge thanks to [Saugata Paul](https://github.com/saugatapaul1010/Medical-AI-Andr
    ```
 2. We need to navigate to the working directory and Install pip(python) packages.You can see the file requirements.txt file present inside this directory.
    ```
-   cd Medical-AI-Android/WebApp
+   cd DL-models-medical/WebApp
    pip install -r requirements.txt
    ```
-3. Now wait for all the packages to get installed. Once this step is done, we need to run our application
+3. Now wait for all the packages to get installed. Once this step is done, we need to run our application.Used Flask to deploy our application on localhost. For this we just need to go to the root directory and type “python core_app.py” in the terminal and hit enter. This will start our server at port 800. You can use any port as you want.
     ```py
    python core_app.py
+   ```
+4.Let’s open any web browser from our PC and type:
+   ```
+    http://127.0.0.1:800/home
+   
    ```
