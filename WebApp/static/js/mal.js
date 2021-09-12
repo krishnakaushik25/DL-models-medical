@@ -5,7 +5,7 @@ var map = null;
 
     var val = $("#id_one").val();
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', "http://127.0.0.1:8000", true);
+    xhr.open('POST', "http://34.125.17.109:8000", true);
     data = new FormData();
     data.append("type", val);
     if(val != "cancer")
