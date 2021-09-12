@@ -30,6 +30,5 @@ Huge thanks to [Saugata Paul](https://github.com/saugatapaul1010/Medical-AI-Andr
    ```
 4. Let’s open any web browser from our PC and type:
    ```
-    http://127.0.0.1:800/home
-   
+    http://127.0.0.1:800/home  
    ```
