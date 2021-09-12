@@ -19,8 +19,9 @@ Huge thanks to [Saugata Paul](https://github.com/saugatapaul1010/Medical-AI-Andr
    ```sh
    git clone https://github.com/krishnakaushik25/DL-models-medical.git
    ```
-2. Install pip(python) packages
+2. We need to navigate to the working directory and Install pip(python) packages.You can see the file requirements.txt file present inside this directory.
    ```
+   cd Medical-AI-Android/WebApp
    pip install -r requirements.txt
    ```
 3. Now wait for all the packages to get installed. Once this step is done, we need to run our application
